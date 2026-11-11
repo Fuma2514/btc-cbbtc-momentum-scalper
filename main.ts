@@ -8,6 +8,13 @@ import { runBars, type BarsState, type SellInput } from './vendor/makefun-bars.t
  * standard one-bar latency). Hold for 35 bars from the entry fill, then sell.
  * Long-only, one position, deterministic integer comparisons, no clock,
  * randomness, network, or external files.
+ *
+ * Replay notes: the harness opens with hello (capital, caps, fees, seed),
+ * then sends one batch per minute carrying a 1-minute cbBTC bar and the
+ * fills of the previous batch's orders. A buy order fills at the next
+ * bar's open against the pool depth, paying 4 bps of fee, 2 bps of fixed
+ * slippage and constant-product price impact. The sell decision lands
+ * one bar before the hold ends so the exit fills at the next open.
  */
 const LOOKBACK_BARS = 3;
 const ENTRY_RETURN_BPS = 40n; // 0.40%
