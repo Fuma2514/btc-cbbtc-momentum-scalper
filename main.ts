@@ -21,6 +21,19 @@ let entryFillSeq: number | null = null;
 // Cache the minimum notional once; the harness fees never change mid-run.
 let minNotional: bigint | null = null;
 
+/**
+ * The momentum test: true when the close three observed bars ago is a usable
+ * price and the latest close beats it by more than ENTRY_RETURN_BPS in bps.
+ * Pure integer math on the rolling window, so the entry is exactly as
+ * deterministic as the inline comparison it replaces.
+ */
+function momentumConfirmed(series: bigint[]): boolean {
+  if (series.length < LOOKBACK_BARS + 1) return false;
+  const now = series[series.length - 1];
+  const then = series[0];
+  return then > 0n && now * 10_000n > then * (10_000n + ENTRY_RETURN_BPS);
+}
+
 await runBars({
   onBatch(state: BarsState, batch) {
     const bar = batch.bars.find((item) => item.symbol === SYMBOL);
@@ -50,10 +63,7 @@ await runBars({
     // A previously submitted sell has now filled (or the buy was rejected).
     entryFillSeq = null;
 
-    if (closes.length < LOOKBACK_BARS + 1) return [];
-    const now = closes[closes.length - 1];
-    const then = closes[0];
-    if (then <= 0n || now * 10_000n <= then * (10_000n + ENTRY_RETURN_BPS)) return [];
+    if (!momentumConfirmed(closes)) return [];
 
     const weightRoom = state.weightRoom(SYMBOL);
     const spend = state.cash < weightRoom ? state.cash : weightRoom;
